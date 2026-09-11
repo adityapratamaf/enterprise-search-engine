@@ -3,6 +3,8 @@ using Elastic.Transport;
 
 using SearchEngine.Application.Common.Interfaces;
 using SearchEngine.Infrastructure.Search.Indexing;
+using SearchEngine.Infrastructure.Search.Internal;
+using SearchEngine.Infrastructure.Search.Searching;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,11 +55,29 @@ public static class DependencyInjection
             return new ElasticsearchClient(settings);
         });
 
+        // Pintu tunggal ke Elasticsearch. Tidak menyimpan keadaan apa pun
+        // dan hanya membungkus klien yang sudah singleton.
+        services.AddSingleton<ElasticsearchGateway>();
+
         // Scoped: indexer membaca basis data lewat DbContext yang juga
         // scoped. Hangfire membuat scope tersendiri untuk setiap job.
         services.AddScoped<
             ISpbuIndexer,
             SpbuIndexer>();
+
+        // Kedua mesin pencari didaftarkan bersamaan; pemilihannya terjadi
+        // saat permintaan datang berdasarkan parameter engine.
+        services.AddScoped<
+            ISpbuSearchProvider,
+            ElasticsearchSpbuSearchProvider>();
+
+        services.AddScoped<
+            ISpbuSearchProvider,
+            SqlSpbuSearchProvider>();
+
+        services.AddScoped<
+            ISpbuSuggestionService,
+            SpbuSuggestionService>();
 
         return services;
     }

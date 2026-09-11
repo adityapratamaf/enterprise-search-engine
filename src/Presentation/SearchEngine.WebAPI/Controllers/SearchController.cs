@@ -1,8 +1,12 @@
 using SearchEngine.Application.Common.Models;
 using SearchEngine.Application.Common.Security;
+using SearchEngine.Application.Features.Search.DTOs;
+using SearchEngine.Application.Features.Search.Queries.SearchSpbu;
+using SearchEngine.Application.Features.Search.Queries.SuggestSpbu;
 using SearchEngine.WebAPI.Jobs;
 
 using Hangfire;
+using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +20,64 @@ namespace SearchEngine.WebAPI.Controllers;
 [Route("api/search")]
 public class SearchController : ControllerBase
 {
+    private readonly IMediator _mediator;
+
     private readonly IBackgroundJobClient _backgroundJobClient;
 
     public SearchController(
+        IMediator mediator,
         IBackgroundJobClient backgroundJobClient)
     {
+        _mediator = mediator;
         _backgroundJobClient = backgroundJobClient;
+    }
+
+    // =====================================================
+    // PENCARIAN
+    // =====================================================
+
+    [HttpGet("spbu")]
+    [HasPermission("search", "view")]
+    [EndpointDescription(
+        "Pencarian SPBU: full-text dengan toleransi salah ketik, sinonim "
+        + "alamat (\"jl\" dikenali sebagai \"jalan\"), peringkat relevansi, "
+        + "penyorotan kata yang cocok, hitungan facet untuk panel penyaring, "
+        + "penyaringan wilayah/produk/fasilitas/status, pencarian radius, "
+        + "dan paginasi. "
+        + "Parameter engine dapat diisi Sql untuk membandingkan hasilnya "
+        + "dengan pencarian LIKE biasa — pada mode itu penyorotan dan facet "
+        + "tidak tersedia, dan hal tersebut dilaporkan lewat properti "
+        + "kemampuan serta catatan.")]
+    public async Task<IActionResult> SearchSpbu(
+        [FromQuery] SearchSpbuRequest request)
+    {
+        var result =
+            await _mediator.Send(
+                new SearchSpbuQuery(request));
+
+        return Ok(result);
+    }
+
+    // =====================================================
+    // SARAN KETIK-LANGSUNG
+    // =====================================================
+
+    [HttpGet("spbu/suggestion")]
+    [HasPermission("search", "view")]
+    [EndpointDescription(
+        "Saran nama SPBU untuk kotak pencarian, dicocokkan per awalan kata. "
+        + "Dipanggil pada setiap ketukan tombol, sehingga muatannya sengaja "
+        + "dibuat ringkas. Kata kunci di bawah dua huruf mengembalikan daftar "
+        + "kosong, bukan error.")]
+    public async Task<IActionResult> SuggestSpbu(
+        [FromQuery] string q,
+        [FromQuery] int limit = 10)
+    {
+        var result =
+            await _mediator.Send(
+                new SuggestSpbuQuery(q, limit));
+
+        return Ok(result);
     }
 
     // =====================================================

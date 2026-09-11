@@ -4,8 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-using Elastic.Clients.Elasticsearch;
-using Elastic.Transport;
+using SearchEngine.Infrastructure.Search.Internal;
 
 using SearchEngine.Application.Common.Interfaces;
 using SearchEngine.Application.Common.Search;
@@ -34,10 +33,11 @@ public sealed class SpbuIndexer
     private const string MappingResource =
         "SearchEngine.Infrastructure.Search.Indexing.Mappings.spbu-index.json";
 
-    private const string ContentTypeJson = "application/json";
+    private const string ContentTypeJson =
+        ElasticsearchGateway.JsonContentType;
 
-    // Endpoint _bulk menolak application/json; harus NDJSON.
-    private const string ContentTypeNdJson = "application/x-ndjson";
+    private const string ContentTypeNdJson =
+        ElasticsearchGateway.NdJsonContentType;
 
     private static readonly JsonSerializerOptions DocumentJson =
         new()
@@ -46,7 +46,7 @@ public sealed class SpbuIndexer
                 System.Text.Json.Serialization.JsonIgnoreCondition.Never
         };
 
-    private readonly ElasticsearchClient _client;
+    private readonly ElasticsearchGateway _gateway;
 
     private readonly IApplicationBusinessDbContext _context;
 
@@ -55,12 +55,12 @@ public sealed class SpbuIndexer
     private readonly ILogger<SpbuIndexer> _logger;
 
     public SpbuIndexer(
-        ElasticsearchClient client,
+        ElasticsearchGateway gateway,
         IApplicationBusinessDbContext context,
         IOptions<ElasticsearchOptions> options,
         ILogger<SpbuIndexer> logger)
     {
-        _client = client;
+        _gateway = gateway;
         _context = context;
         _options = options.Value;
         _logger = logger;
@@ -118,7 +118,7 @@ public sealed class SpbuIndexer
 
         foreach (var lama in indexLama)
         {
-            await KirimAsync(
+            await _gateway.SendAsync(
                 HttpMethod.DELETE,
                 lama,
                 null,
@@ -233,7 +233,7 @@ public sealed class SpbuIndexer
         settings["number_of_replicas"] = 0;
         settings["refresh_interval"] = "-1";
 
-        await KirimAsync(
+        await _gateway.SendAsync(
             HttpMethod.PUT,
             index,
             mapping.ToJsonString(),
@@ -318,7 +318,7 @@ public sealed class SpbuIndexer
                     }
                 });
 
-        await KirimAsync(
+        await _gateway.SendAsync(
             HttpMethod.PUT,
             $"{index}/_settings",
             settings,
@@ -327,7 +327,7 @@ public sealed class SpbuIndexer
 
         // Memaksa penyegaran sekali agar seluruh dokumen langsung terlihat
         // sebelum alias dipindahkan.
-        await KirimAsync(
+        await _gateway.SendAsync(
             HttpMethod.POST,
             $"{index}/_refresh",
             null,
@@ -379,7 +379,7 @@ public sealed class SpbuIndexer
             ["actions"] = actions
         };
 
-        await KirimAsync(
+        await _gateway.SendAsync(
             HttpMethod.POST,
             "_aliases",
             body.ToJsonString(),
@@ -397,7 +397,7 @@ public sealed class SpbuIndexer
             SearchIndexNames.SpbuPattern(_options.IndexPrefix);
 
         var respons =
-            await KirimAsync(
+            await _gateway.SendAsync(
                 HttpMethod.GET,
                 $"_cat/indices/{pola}?format=json&h=index",
                 null,
@@ -690,7 +690,7 @@ public sealed class SpbuIndexer
             ndjson.Append(b).Append('\n');
         }
 
-        return await KirimAsync(
+        return await _gateway.SendAsync(
             HttpMethod.POST,
             $"{index}/_bulk",
             ndjson.ToString(),
@@ -749,49 +749,6 @@ public sealed class SpbuIndexer
         }
 
         return (berhasil, gagal);
-    }
-
-    private async Task<string> KirimAsync(
-        HttpMethod method,
-        string path,
-        string? body,
-        string contentType,
-        CancellationToken cancellationToken,
-        bool terimaGagal = false)
-    {
-        var endpoint =
-            new EndpointPath(method, path);
-
-        var konfigurasi =
-            new RequestConfiguration
-            {
-                ContentType = contentType,
-                Accept = ContentTypeJson
-            };
-
-        var respons =
-            await _client.Transport
-                .RequestAsync<StringResponse>(
-                    endpoint,
-                    body is null
-                        ? null
-                        : PostData.String(body),
-                    null,
-                    konfigurasi,
-                    cancellationToken);
-
-        var sukses =
-            respons.ApiCallDetails.HasSuccessfulStatusCode;
-
-        if (sukses || terimaGagal)
-        {
-            return respons.Body ?? string.Empty;
-        }
-
-        throw new InvalidOperationException(
-            $"Permintaan Elasticsearch gagal: {method} /{path} "
-            + $"→ HTTP {respons.ApiCallDetails.HttpStatusCode}. "
-            + $"Tanggapan: {respons.Body}");
     }
 
     private static string BacaMapping()

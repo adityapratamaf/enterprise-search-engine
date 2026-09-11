@@ -23,7 +23,13 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     private static readonly JsonSerializerOptions SerializerOptions =
         new()
         {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+
+            // Menyamakan penamaan dengan respons sukses, yang diserialisasi
+            // MVC dengan camelCase. Tanpa ini amplop Result yang sama
+            // terbaca "message" saat berhasil dan "Message" saat gagal,
+            // sehingga klien harus menangani dua bentuk untuk satu kontrak.
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
     private readonly ILogger<GlobalExceptionHandler> _logger;

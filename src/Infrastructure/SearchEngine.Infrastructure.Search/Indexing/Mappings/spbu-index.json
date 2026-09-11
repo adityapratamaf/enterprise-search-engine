@@ -19,7 +19,7 @@
           "type": "stemmer",
           "language": "indonesian"
         },
-        "id_sinonim_alamat": {
+        "id_sinonim": {
           "type": "synonym_graph",
           "lenient": true,
           "synonyms": [
@@ -31,7 +31,13 @@
             "km, kilometer",
             "jend, jenderal",
             "gg, gang",
-            "spbu, pom bensin"
+            "spbu, pom bensin",
+
+            "solar, biosolar, bio solar, diesel",
+            "dex, dexlite",
+            "bensin, gasoline",
+            "musholla, mushola, mushalla",
+            "atm, anjungan tunai mandiri"
           ]
         }
       },
@@ -42,7 +48,7 @@
         },
         "alamat_search": {
           "tokenizer": "standard",
-          "filter": ["lowercase", "id_sinonim_alamat", "id_stop", "id_stemmer"]
+          "filter": ["lowercase", "id_sinonim", "id_stop", "id_stemmer"]
         },
         "kode_spbu": {
           "tokenizer": "keyword",
@@ -112,7 +118,7 @@
 
       "produk": { "type": "keyword" },
       "produkNama": { "type": "keyword", "copy_to": "cari_semua" },
-      "jenisBbm": { "type": "keyword" },
+      "jenisBbm": { "type": "keyword", "copy_to": "cari_semua" },
       "fasilitas": { "type": "keyword" },
       "fasilitasNama": { "type": "keyword", "copy_to": "cari_semua" }
     }
