@@ -17,130 +17,99 @@ on:
 permissions:
   contents: read
 
+env:
+  DOTNET_VERSION: "10.0.x"
+  DOTNET_NOLOGO: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+  SA_PASSWORD: "Password123!"
+
 jobs:
-  build-and-validate:
-    name: Build & Validate Template
+  # ==================================================================
+  # Build seluruh solusi dan jalankan pengujian.
+  #
+  # Dua dependensi disediakan di sini karena integration test menyalakan
+  # aplikasi yang sesungguhnya:
+  #   - SQL Server, untuk migration dan seeder data referensi
+  #   - Elasticsearch, karena probe /health/ready ikut memeriksanya
+  # ==================================================================
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
 
+    services:
+      elasticsearch:
+        # Keamanan dimatikan khusus untuk CI: container ini sekali pakai,
+        # hanya dapat dijangkau dari dalam runner, dan mematikannya
+        # menghilangkan kebutuhan bootstrap user seperti pada stack lokal.
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.0.0
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+
     steps:
-      # ============================================
-      # Checkout Repository
-      # ============================================
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      # ============================================
-      # Setup .NET
-      # ============================================
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # ============================================
-      # Display SDK
-      # ============================================
-      - name: Display .NET Info
-        run: dotnet --info
-
-      # ============================================
-      # Start SQL Server
-      # ============================================
       - name: Start SQL Server
         uses: potatoqualitee/mssqlsuite@v1.7
         with:
           install: sqlengine
-          sa-password: "Password123!"
+          sa-password: ${{ env.SA_PASSWORD }}
 
-      # ============================================
-      # Restore Template
-      # ============================================
-      - name: Restore Template
-        run: dotnet restore Mediaine.SearchEngine.Template.csproj
+      - name: Restore
+        run: dotnet restore SearchEngine.slnx
 
-      # ============================================
-      # Build Template
-      # ============================================
-      - name: Build Template
-        run: dotnet build Mediaine.SearchEngine.Template.csproj -c Release --no-restore
+      - name: Build
+        run: dotnet build SearchEngine.slnx -c Release --no-restore
 
-      # ============================================
-      # Pack Template
-      # ============================================
-      - name: Pack Template
-        run: dotnet pack Mediaine.SearchEngine.Template.csproj -c Release --no-build
-
-      # ============================================
-      # Install Template
-      # ============================================
-      - name: Install Template
-        run: |
-          dotnet new install ./bin/Release/*.nupkg
-
-      # ============================================
-      # Generate Sample Project
-      # ============================================
-      - name: Generate Sample Project
-        run: |
-          mkdir TemplateTest
-          cd TemplateTest
-          dotnet new searchengine -n SampleProject
-
-      # ============================================
-      # Restore Generated Project
-      # ============================================
-      - name: Restore Generated Project
-        working-directory: TemplateTest/SampleProject
-        run: dotnet restore
-
-      # ============================================
-      # Build Generated Project
-      # ============================================
-      - name: Build Generated Project
-        working-directory: TemplateTest/SampleProject
-        run: dotnet build -c Release --no-restore
+      - name: Test
+        run: >-
+          dotnet test SearchEngine.slnx
+          -c Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
         env:
-          ASPNETCORE_ENVIRONMENT: CI
+          # Hanya connection string yang perlu ditimpa. Nilai di
+          # appsettings.json memakai Windows Authentication ke localhost,
+          # yang tidak berlaku di runner Linux.
+          ConnectionStrings__BusinessConnection: "Server=localhost;Database=SearchEngineBusinessDB;User Id=sa;Password=${{ env.SA_PASSWORD }};TrustServerCertificate=True;Encrypt=False;"
+          ConnectionStrings__IdentityConnection: "Server=localhost;Database=SearchEngineIdentityDB;User Id=sa;Password=${{ env.SA_PASSWORD }};TrustServerCertificate=True;Encrypt=False;"
+          ConnectionStrings__HangfireConnection: "Server=localhost;Database=SearchEngineHangfireDB;User Id=sa;Password=${{ env.SA_PASSWORD }};TrustServerCertificate=True;Encrypt=False;"
 
-          ConnectionStrings__BusinessConnection: "Server=localhost;Database=SearchEngineBusinessDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
+          # Kredensial diabaikan karena keamanan dimatikan, tetapi tetap
+          # harus terisi agar lolos validasi opsi saat aplikasi start.
+          Elasticsearch__Uri: "http://localhost:9200"
+          Elasticsearch__Username: "elastic"
+          Elasticsearch__Password: "ci-security-disabled"
 
-          ConnectionStrings__IdentityConnection: "Server=localhost;Database=SearchEngineIdentityDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
-
-          ConnectionStrings__HangfireConnection: "Server=localhost;Database=SearchEngineHangfireDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
-
-      # ============================================
-      # Run Tests
-      # ============================================
-      - name: Run Tests (with coverage)
-        working-directory: TemplateTest/SampleProject
-        run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
-        env:
-          ASPNETCORE_ENVIRONMENT: CI
-
-          JwtSettings__Secret: "CI_ONLY_TEST_SECRET_MUST_BE_AT_LEAST_32_CHARS"
-
+          # Test host membangun skema dan menanam data referensi sendiri.
           Database__MigrateOnStartup: "true"
 
-          ConnectionStrings__BusinessConnection: "Server=localhost;Database=SearchEngineBusinessDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
-
-          ConnectionStrings__IdentityConnection: "Server=localhost;Database=SearchEngineIdentityDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
-
-          ConnectionStrings__HangfireConnection: "Server=localhost;Database=SearchEngineHangfireDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
-
-      # ============================================
-      # Upload Coverage Report
-      # ============================================
       - name: Upload Coverage Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: "TemplateTest/SampleProject/TestResults/**/coverage.cobertura.xml"
+          path: "TestResults/**/coverage.cobertura.xml"
           if-no-files-found: warn
 
-  # ==================================================
-  # Code quality & dependency vulnerability gate
-  # ==================================================
+  # ==================================================================
+  # Gerbang mutu kode dan kerentanan dependensi
+  # ==================================================================
   code-quality:
     name: Code Quality & Vulnerability Gate
     runs-on: ubuntu-latest
@@ -152,7 +121,7 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore Solution
         run: dotnet restore SearchEngine.slnx
@@ -170,16 +139,16 @@ jobs:
           fi
           echo "No vulnerable packages found."
 
-  # ==================================================
-  # CodeQL static analysis (C#)
-  # ==================================================
+  # ==================================================================
+  # Analisis statis CodeQL (C#)
+  # ==================================================================
   codeql:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
-    # Code scanning (CodeQL) requires GitHub Advanced Security, which is not
-    # available on private repositories without a GHAS licence. Uploading
-    # results there fails the run, so skip the job on private repos; it runs
-    # automatically once the repository is public (or GHAS is enabled).
+    # Code scanning memerlukan GitHub Advanced Security, yang tidak tersedia
+    # pada repositori privat tanpa lisensi GHAS. Mengunggah hasilnya di sana
+    # membuat run gagal, sehingga job ini dilewati pada repo privat dan akan
+    # berjalan sendiri begitu repositori dibuat publik.
     if: ${{ github.event.repository.private == false }}
 
     permissions:
@@ -193,7 +162,7 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
