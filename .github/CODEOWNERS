@@ -1,0 +1,9 @@
+# CODEOWNERS
+#
+# These owners are requested for review when someone opens a pull request.
+# Order matters: the last matching pattern takes precedence.
+#
+# Repository owner determined from the Git remote:
+#   https://github.com/adityapratamaf/SearchEngineProjectAPI
+
+* @adityapratamaf

@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="src/Core/SearchEngine.Application/SearchEngine.Application.csproj" />
+    <Project Path="src/Core/SearchEngine.Domain/SearchEngine.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/SearchEngine.Infrastructure.Identity/SearchEngine.Infrastructure.Identity.csproj" />
+    <Project Path="src/Infrastructure/SearchEngine.Infrastructure.Persistence/SearchEngine.Infrastructure.Persistence.csproj" />
+    <Project Path="src/Infrastructure/SearchEngine.Infrastructure.Shared/SearchEngine.Infrastructure.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/SearchEngine.WebAPI/SearchEngine.WebAPI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SearchEngine.Application.IntegrationTests/SearchEngine.Application.IntegrationTests.csproj" />
+    <Project Path="tests/SearchEngine.Application.UnitTests/SearchEngine.Application.UnitTests.csproj" />
+    <Project Path="tests/SearchEngine.Domain.UnitTests/SearchEngine.Domain.UnitTests.csproj" />
+  </Folder>
+</Solution>

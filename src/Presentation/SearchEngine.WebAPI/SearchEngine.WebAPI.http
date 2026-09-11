@@ -1,0 +1,6 @@
+@SearchEngine.WebAPI_HostAddress = http://localhost:5152
+
+GET {{SearchEngine.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

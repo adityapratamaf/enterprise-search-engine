@@ -1,0 +1,57 @@
+# ============================
+# Build Output
+# ============================
+**/bin/
+**/obj/
+
+# ============================
+# IDE
+# ============================
+.vs/
+.vscode/
+.idea/
+
+# ============================
+# Git
+# ============================
+.git
+.gitignore
+
+# ============================
+# Docker
+# ============================
+docker-compose.override.yml
+
+# ============================
+# Local Environment & Secrets
+# (never copy secrets into the build context or image)
+# ============================
+.env
+.env.*
+**/appsettings.Development.json
+**/appsettings.*.Local.json
+**/secrets.json
+**/*secrets*.json
+
+# ============================
+# Documentation
+# ============================
+doc/
+Readme.md
+
+# ============================
+# Tests
+# ============================
+tests/
+
+# ============================
+# Tests
+# ============================
+TestResults/
+coverage/
+
+# ============================
+# OS
+# ============================
+.DS_Store
+Thumbs.db

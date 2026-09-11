@@ -1,0 +1,208 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "release/**"
+      - "hotfix/**"
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-validate:
+    name: Build & Validate Template
+    runs-on: ubuntu-latest
+
+    steps:
+      # ============================================
+      # Checkout Repository
+      # ============================================
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      # ============================================
+      # Setup .NET
+      # ============================================
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # ============================================
+      # Display SDK
+      # ============================================
+      - name: Display .NET Info
+        run: dotnet --info
+
+      # ============================================
+      # Start SQL Server
+      # ============================================
+      - name: Start SQL Server
+        uses: potatoqualitee/mssqlsuite@v1.7
+        with:
+          install: sqlengine
+          sa-password: "Password123!"
+
+      # ============================================
+      # Restore Template
+      # ============================================
+      - name: Restore Template
+        run: dotnet restore Mediaine.SearchEngine.Template.csproj
+
+      # ============================================
+      # Build Template
+      # ============================================
+      - name: Build Template
+        run: dotnet build Mediaine.SearchEngine.Template.csproj -c Release --no-restore
+
+      # ============================================
+      # Pack Template
+      # ============================================
+      - name: Pack Template
+        run: dotnet pack Mediaine.SearchEngine.Template.csproj -c Release --no-build
+
+      # ============================================
+      # Install Template
+      # ============================================
+      - name: Install Template
+        run: |
+          dotnet new install ./bin/Release/*.nupkg
+
+      # ============================================
+      # Generate Sample Project
+      # ============================================
+      - name: Generate Sample Project
+        run: |
+          mkdir TemplateTest
+          cd TemplateTest
+          dotnet new searchengine -n SampleProject
+
+      # ============================================
+      # Restore Generated Project
+      # ============================================
+      - name: Restore Generated Project
+        working-directory: TemplateTest/SampleProject
+        run: dotnet restore
+
+      # ============================================
+      # Build Generated Project
+      # ============================================
+      - name: Build Generated Project
+        working-directory: TemplateTest/SampleProject
+        run: dotnet build -c Release --no-restore
+        env:
+          ASPNETCORE_ENVIRONMENT: CI
+
+          ConnectionStrings__BusinessConnection: "Server=localhost;Database=SearchEngineBusinessDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
+
+          ConnectionStrings__IdentityConnection: "Server=localhost;Database=SearchEngineIdentityDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
+
+          ConnectionStrings__HangfireConnection: "Server=localhost;Database=SearchEngineHangfireDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
+
+      # ============================================
+      # Run Tests
+      # ============================================
+      - name: Run Tests (with coverage)
+        working-directory: TemplateTest/SampleProject
+        run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./TestResults
+        env:
+          ASPNETCORE_ENVIRONMENT: CI
+
+          JwtSettings__Secret: "CI_ONLY_TEST_SECRET_MUST_BE_AT_LEAST_32_CHARS"
+
+          Database__MigrateOnStartup: "true"
+
+          ConnectionStrings__BusinessConnection: "Server=localhost;Database=SearchEngineBusinessDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
+
+          ConnectionStrings__IdentityConnection: "Server=localhost;Database=SearchEngineIdentityDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
+
+          ConnectionStrings__HangfireConnection: "Server=localhost;Database=SearchEngineHangfireDB;User Id=sa;Password=Password123!;TrustServerCertificate=True;Encrypt=False;"
+
+      # ============================================
+      # Upload Coverage Report
+      # ============================================
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: "TemplateTest/SampleProject/TestResults/**/coverage.cobertura.xml"
+          if-no-files-found: warn
+
+  # ==================================================
+  # Code quality & dependency vulnerability gate
+  # ==================================================
+  code-quality:
+    name: Code Quality & Vulnerability Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore Solution
+        run: dotnet restore SearchEngine.slnx
+
+      - name: Verify Formatting
+        run: dotnet format SearchEngine.slnx --verify-no-changes
+
+      - name: Vulnerable Package Scan
+        run: |
+          OUTPUT=$(dotnet list SearchEngine.slnx package --vulnerable --include-transitive 2>&1)
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -qiE "has the following vulnerable"; then
+            echo "::error::Vulnerable NuGet packages detected."
+            exit 1
+          fi
+          echo "No vulnerable packages found."
+
+  # ==================================================
+  # CodeQL static analysis (C#)
+  # ==================================================
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    # Code scanning (CodeQL) requires GitHub Advanced Security, which is not
+    # available on private repositories without a GHAS licence. Uploading
+    # results there fails the run, so skip the job on private repos; it runs
+    # automatically once the repository is public (or GHAS is enabled).
+    if: ${{ github.event.repository.private == false }}
+
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          build-mode: manual
+
+      - name: Build Solution
+        run: dotnet build SearchEngine.slnx -c Release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

@@ -1,0 +1,327 @@
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: searchengine-sqlserver
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+
+    ports:
+      - "1433:1433"
+
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -Q \"SELECT 1\" -C"
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - searchengine-network
+
+  seq:
+    image: datalust/seq:latest
+    container_name: searchengine-seq
+
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORD: "Admin123!"
+
+    ports:
+      - "5341:80"
+
+    volumes:
+      - seq-data:/data
+
+    restart: unless-stopped
+
+    networks:
+      - searchengine-network
+
+  # ==========================================================================
+  # Elasticsearch — mesin pencarian & agregasi untuk data SPBU / BBM.
+  #
+  # Perannya hanya menyimpan index turunan (derived). SQL Server tetap menjadi
+  # source of truth, sehingga index di sini boleh dibangun ulang kapan saja.
+  # ==========================================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-9.0.0}
+    container_name: searchengine-elasticsearch
+
+    environment:
+      node.name: searchengine-es01
+      cluster.name: searchengine-cluster
+      discovery.type: single-node
+
+      # Security aktif (mengikuti default 8.x/9.x) agar model autentikasi di
+      # lokal sama dengan produksi. TLS pada layer HTTP dimatikan karena
+      # seluruh trafik tetap berada di dalam docker network; untuk produksi
+      # aktifkan xpack.security.http.ssl dan pasang sertifikat.
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      xpack.license.self_generated.type: basic
+
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+
+      # Dinaikkan seiring bertambahnya volume data (jutaan dokumen umumnya
+      # nyaman di 2g-4g). Jangan melebihi 50% RAM yang dialokasikan ke Docker
+      # Desktop, dan jangan lewat 32g.
+      ES_JAVA_OPTS: ${ES_JAVA_OPTS:--Xms1g -Xmx1g}
+
+      # Memory locking dibiarkan mati agar stack lokal (Docker Desktop / WSL2)
+      # tidak gagal start karena batas ulimit host. Aktifkan di produksi
+      # bersama ulimits memlock untuk mencegah heap ter-swap.
+      bootstrap.memory_lock: "false"
+
+    ports:
+      - "9200:9200"
+
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS -u elastic:$$ELASTIC_PASSWORD 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' > /dev/null"
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+    networks:
+      - searchengine-network
+
+  # ==========================================================================
+  # Bootstrap security Elasticsearch (one-shot, idempoten).
+  #
+  # Menyetel password built-in user kibana_system, lalu membuat role + user
+  # aplikasi yang dipakai backend. User aplikasi sengaja dibatasi hanya pada
+  # index berawalan ELASTIC_INDEX_PREFIX, sehingga backend tidak pernah
+  # berjalan sebagai superuser 'elastic'.
+  # ==========================================================================
+  elasticsearch-setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-9.0.0}
+    container_name: searchengine-elasticsearch-setup
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD}
+      ELASTIC_APP_PASSWORD: ${ELASTIC_APP_PASSWORD}
+      INDEX_PREFIX: ${ELASTIC_INDEX_PREFIX:-searchengine}
+
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -euo pipefail
+
+        ES="http://elasticsearch:9200"
+        AUTH="elastic:$${ELASTIC_PASSWORD}"
+
+        echo "[setup] menyetel password built-in user kibana_system"
+        curl -fsS -u "$${AUTH}" \
+          -X POST "$${ES}/_security/user/kibana_system/_password" \
+          -H "Content-Type: application/json" \
+          -d "{\"password\":\"$${KIBANA_SYSTEM_PASSWORD}\"}" > /dev/null
+
+        echo "[setup] membuat/memperbarui role searchengine_app"
+        curl -fsS -u "$${AUTH}" \
+          -X PUT "$${ES}/_security/role/searchengine_app" \
+          -H "Content-Type: application/json" \
+          -d "{
+                \"cluster\": [\"monitor\", \"manage_index_templates\", \"manage_ilm\"],
+                \"indices\": [
+                  {
+                    \"names\": [\"$${INDEX_PREFIX}-*\"],
+                    \"privileges\": [\"all\"]
+                  }
+                ]
+              }" > /dev/null
+
+        echo "[setup] membuat/memperbarui user searchengine_app"
+        curl -fsS -u "$${AUTH}" \
+          -X PUT "$${ES}/_security/user/searchengine_app" \
+          -H "Content-Type: application/json" \
+          -d "{
+                \"password\": \"$${ELASTIC_APP_PASSWORD}\",
+                \"roles\": [\"searchengine_app\"],
+                \"full_name\": \"SearchEngine Backend API\"
+              }" > /dev/null
+
+        echo "[setup] selesai"
+
+    networks:
+      - searchengine-network
+
+  # ==========================================================================
+  # Kibana — eksplorasi index, Dev Tools console, dan dashboard data bisnis
+  # (stok, sales, supply, distribusi BBM). Log aplikasi tetap di Seq.
+  # ==========================================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION:-9.0.0}
+    container_name: searchengine-kibana
+
+    depends_on:
+      elasticsearch-setup:
+        condition: service_completed_successfully
+
+    environment:
+      SERVERNAME: searchengine-kibana
+      SERVER_PUBLICBASEURL: ${KIBANA_PUBLIC_BASE_URL:-http://localhost:5601}
+
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD}
+
+      # Wajib minimal 32 karakter dan harus tetap antar-restart. Bila nilainya
+      # berubah, seluruh saved object terenkripsi (alert, connector) tidak
+      # lagi dapat didekripsi.
+      XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
+      XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
+
+    ports:
+      - "5601:5601"
+
+    volumes:
+      - kibana-data:/usr/share/kibana/data
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 90s
+
+    networks:
+      - searchengine-network
+
+  api:
+    container_name: searchengine-api
+
+    build:
+      context: .
+      dockerfile: src/Presentation/SearchEngine.WebAPI/Dockerfile
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+      seq:
+        condition: service_started
+
+      elasticsearch:
+        condition: service_healthy
+
+    ports:
+      - "5000:8080"
+
+    environment:
+
+      ASPNETCORE_ENVIRONMENT: Docker
+
+      ConnectionStrings__BusinessConnection: >
+        Server=sqlserver;
+        Database=SearchEngineBusinessDB;
+        User Id=sa;
+        Password=${SA_PASSWORD};
+        TrustServerCertificate=True;
+
+      ConnectionStrings__IdentityConnection: >
+        Server=sqlserver;
+        Database=SearchEngineIdentityDB;
+        User Id=sa;
+        Password=${SA_PASSWORD};
+        TrustServerCertificate=True;
+
+      ConnectionStrings__HangfireConnection: >
+        Server=sqlserver;
+        Database=SearchEngineHangfireDB;
+        User Id=sa;
+        Password=${SA_PASSWORD};
+        TrustServerCertificate=True;
+      
+      # ConnectionStrings__HangfireConnection: >
+      #   Server=sqlserver;
+      #   Database=SearchEngineBusinessDB;
+      #   User Id=sa;
+      #   Password=${SA_PASSWORD};
+      #   TrustServerCertificate=True;
+
+      JwtSettings__Secret: ${JWT_SECRET}
+
+      # Single-instance demo stack: let the API apply migrations on startup.
+      # For real multi-replica deployments, run migrations as a separate job.
+      Database__MigrateOnStartup: "true"
+
+      # Health Checks UI collector must poll the in-container port (8080).
+      HealthChecksUI__HealthCheckEndpoint: "http://localhost:8080/healthcheck-json"
+
+      # Elasticsearch diakses lewat nama service di dalam docker network.
+      Elasticsearch__Uri: "http://elasticsearch:9200"
+      Elasticsearch__Username: "searchengine_app"
+      Elasticsearch__Password: ${ELASTIC_APP_PASSWORD}
+      Elasticsearch__IndexPrefix: ${ELASTIC_INDEX_PREFIX:-searchengine}
+
+      # URL Kibana untuk membangun tautan dashboard pada response API. Harus
+      # URL yang dapat dibuka browser pengguna, bukan hostname internal docker.
+      Kibana__BaseUrl: ${KIBANA_PUBLIC_BASE_URL:-http://localhost:5601}
+
+      SMTP__Host: ${SMTP_HOST}
+      SMTP__Port: ${SMTP_PORT}
+      SMTP__Username: ${SMTP_USERNAME}
+      SMTP__Password: ${SMTP_PASSWORD}
+      SMTP__FromEmail: ${SMTP_FROM_EMAIL}
+      SMTP__FromName: ${SMTP_FROM_NAME}
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:8080/healthcheck-json"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - searchengine-network
+
+volumes:
+  sqlserver-data:
+  seq-data:
+  elasticsearch-data:
+  kibana-data:
+
+networks:
+  searchengine-network:
+    driver: bridge
