@@ -3,6 +3,7 @@ using SearchEngine.Application;
 using SearchEngine.Infrastructure.Identity;
 using SearchEngine.Infrastructure.Shared;
 using SearchEngine.Infrastructure.Persistence;
+using SearchEngine.Infrastructure.Search;
 using SearchEngine.WebAPI.Middleware;
 using SearchEngine.WebAPI.Authorization;
 using SearchEngine.Application.Common.Interfaces;
@@ -87,6 +88,11 @@ builder.Services.AddPersistence(
 
 // File Attachment
 builder.Services.AddSharedInfrastructure(
+    builder.Configuration);
+
+
+// Elasticsearch
+builder.Services.AddSearchInfrastructure(
     builder.Configuration);
 
 

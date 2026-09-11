@@ -1,3 +1,5 @@
+using SearchEngine.WebAPI.Jobs;
+
 using Hangfire;
 using Hangfire.Dashboard;
 
@@ -29,6 +31,25 @@ public static class HangfireExtensions
         var environment =
             app.ApplicationServices
                 .GetRequiredService<IWebHostEnvironment>();
+
+        // Indexing ulang terjadwal sebagai jaring pengaman. Perubahan data
+        // yang tidak lewat aplikasi — mis. UPDATE langsung ke SQL Server —
+        // tidak akan pernah memberi tahu Elasticsearch, sehingga membangun
+        // ulang secara berkala adalah satu-satunya cara menjamin penyimpangan
+        // tidak menumpuk diam-diam.
+        // Memakai IRecurringJobManager dari container, bukan kelas statis
+        // RecurringJob: yang statis bergantung pada JobStorage.Current global
+        // yang belum tentu terpasang saat pipeline dibangun.
+        app.ApplicationServices
+            .GetRequiredService<IRecurringJobManager>()
+            .AddOrUpdate<SpbuReindexJob>(
+                "spbu-reindex-harian",
+                job => job.RunAsync(CancellationToken.None),
+                "0 2 * * *",
+                new RecurringJobOptions
+                {
+                    TimeZone = TimeZoneInfo.Utc
+                });
 
         if (environment.IsDevelopment())
         {

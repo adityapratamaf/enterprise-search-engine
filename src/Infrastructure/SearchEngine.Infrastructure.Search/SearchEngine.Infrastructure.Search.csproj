@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.5.2" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\SearchEngine.Application\SearchEngine.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Mapping index disematkan ke assembly: berkas ini adalah sumber
+         kebenaran bentuk index dan harus selalu ikut ke mana pun aplikasi
+         dijalankan. -->
+    <EmbeddedResource Include="Indexing\Mappings\spbu-index.json" />
+  </ItemGroup>
+
+</Project>

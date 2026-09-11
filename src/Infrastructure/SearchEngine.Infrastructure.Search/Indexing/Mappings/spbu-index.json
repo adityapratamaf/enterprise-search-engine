@@ -1,0 +1,120 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "char_filter": {
+        "hanya_digit": {
+          "type": "pattern_replace",
+          "pattern": "[^0-9]",
+          "replacement": ""
+        }
+      },
+      "filter": {
+        "id_stop": {
+          "type": "stop",
+          "stopwords": "_indonesian_"
+        },
+        "id_stemmer": {
+          "type": "stemmer",
+          "language": "indonesian"
+        },
+        "id_sinonim_alamat": {
+          "type": "synonym_graph",
+          "lenient": true,
+          "synonyms": [
+            "jl, jln, jalan",
+            "kec, kecamatan",
+            "kel, kelurahan",
+            "kab, kabupaten",
+            "kav, kaveling",
+            "km, kilometer",
+            "jend, jenderal",
+            "gg, gang",
+            "spbu, pom bensin"
+          ]
+        }
+      },
+      "analyzer": {
+        "alamat_index": {
+          "tokenizer": "standard",
+          "filter": ["lowercase", "id_stop", "id_stemmer"]
+        },
+        "alamat_search": {
+          "tokenizer": "standard",
+          "filter": ["lowercase", "id_sinonim_alamat", "id_stop", "id_stemmer"]
+        },
+        "kode_spbu": {
+          "tokenizer": "keyword",
+          "char_filter": ["hanya_digit"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "id": { "type": "keyword" },
+
+      "kodeSpbu": {
+        "type": "keyword",
+        "copy_to": "cari_semua",
+        "fields": {
+          "digit": {
+            "type": "text",
+            "analyzer": "kode_spbu"
+          }
+        }
+      },
+
+      "nama": {
+        "type": "text",
+        "analyzer": "alamat_index",
+        "search_analyzer": "alamat_search",
+        "copy_to": "cari_semua",
+        "fields": {
+          "keyword": { "type": "keyword" },
+          "ketik": { "type": "search_as_you_type" }
+        }
+      },
+
+      "alamat": {
+        "type": "text",
+        "analyzer": "alamat_index",
+        "search_analyzer": "alamat_search",
+        "copy_to": "cari_semua"
+      },
+
+      "kodePos": { "type": "keyword" },
+
+      "kota": { "type": "keyword", "copy_to": "cari_semua" },
+      "kodeKota": { "type": "keyword" },
+      "provinsi": { "type": "keyword", "copy_to": "cari_semua" },
+      "kodeProvinsi": { "type": "keyword" },
+
+      "regional": { "type": "keyword", "copy_to": "cari_semua" },
+      "regionalNama": { "type": "keyword", "copy_to": "cari_semua" },
+      "regionalNomor": { "type": "integer" },
+
+      "cari_semua": {
+        "type": "text",
+        "analyzer": "alamat_index",
+        "search_analyzer": "alamat_search"
+      },
+
+      "tipeKepemilikan": { "type": "keyword" },
+      "status": { "type": "keyword" },
+      "jumlahDispenser": { "type": "integer" },
+      "jumlahNozzle": { "type": "integer" },
+      "tanggalOperasi": { "type": "date" },
+      "nomorTelepon": { "type": "keyword" },
+
+      "lokasi": { "type": "geo_point" },
+
+      "produk": { "type": "keyword" },
+      "produkNama": { "type": "keyword", "copy_to": "cari_semua" },
+      "jenisBbm": { "type": "keyword" },
+      "fasilitas": { "type": "keyword" },
+      "fasilitasNama": { "type": "keyword", "copy_to": "cari_semua" }
+    }
+  }
+}

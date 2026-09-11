@@ -1,4 +1,5 @@
 using SearchEngine.WebAPI.HealthChecks;
+using SearchEngine.Infrastructure.Search.HealthChecks;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -72,7 +73,13 @@ public static class HealthCheckExtensions
             // ---- File Storage (critical -> Unhealthy) ----
             .AddCheck<FileStorageHealthCheck>(
                 "File Storage Service: File System",
-                tags: ["File Storage"]);
+                tags: ["File Storage"])
+
+            // ---- Search engine (critical -> Unhealthy). Seluruh pencarian
+            //      dilayani dari sini; bila mati, fitur utama aplikasi hilang. ----
+            .AddCheck<ElasticsearchHealthCheck>(
+                "Search Engine: Elasticsearch",
+                tags: ["Search"]);
 
         // URL yang di-poll collector. Wajib absolut (collector jalan di
         // background tanpa konteks request). Bisa dioverride via konfigurasi

@@ -85,6 +85,14 @@ public static class ModuleSeeder
             new()
             {
                 Id = Guid.NewGuid(),
+                ModuleId = "search",
+                ModuleName = "Search",
+                ModulePath = "/search"
+            },
+
+            new()
+            {
+                Id = Guid.NewGuid(),
                 ModuleId = "settings",
                 ModuleName = "Settings",
                 ModulePath = "/settings"

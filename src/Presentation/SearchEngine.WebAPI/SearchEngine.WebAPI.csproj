@@ -49,6 +49,7 @@
     <ProjectReference Include="..\..\Infrastructure\SearchEngine.Infrastructure.Persistence\SearchEngine.Infrastructure.Persistence.csproj" />
     <ProjectReference Include="..\..\Infrastructure\SearchEngine.Infrastructure.Identity\SearchEngine.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\..\Infrastructure\SearchEngine.Infrastructure.Shared\SearchEngine.Infrastructure.Shared.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\SearchEngine.Infrastructure.Search\SearchEngine.Infrastructure.Search.csproj" />
   </ItemGroup>
 
 </Project>
