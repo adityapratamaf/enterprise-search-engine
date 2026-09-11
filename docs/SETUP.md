@@ -259,16 +259,35 @@ http://localhost:5152/hangfire
 
 # Run with Docker
 
+SQL Server is **not** part of the Compose stack. The database runs as a local
+instance installed directly on the host; Compose only provides the services
+that are impractical to install natively.
+
+## Infrastructure only (default)
+
+Starts Seq, Elasticsearch, and Kibana. Run the backend separately with
+`dotnet run` — it reaches every service over `localhost`.
+
+```bash
+docker compose up -d
+```
+
+## Including the backend (optional)
+
+Also builds and runs the API in a container. In this mode the API connects to
+the host's SQL Server through `host.docker.internal`, so the local instance
+must have TCP/IP enabled and use SQL Server Authentication — Windows
+Authentication is not available from a Linux container. Credentials come from
+the `DB_*` variables in `.env`.
+
+```bash
+docker compose --profile api up -d --build
+```
+
 Build containers
 
 ```bash
 docker compose build
-```
-
-Start containers
-
-```bash
-docker compose up -d
 ```
 
 Stop containers
@@ -293,11 +312,13 @@ docker compose down --rmi all -v --remove-orphans
 
 # Docker Services
 
-| Service    | Port |
-| ---------- | ---- |
-| API        | 5000 |
-| SQL Server | 1433 |
-| Seq        | 5341 |
+| Service       | Port | Profile   |
+| ------------- | ---- | --------- |
+| Seq           | 5341 | default   |
+| Elasticsearch | 9200 | default   |
+| Kibana        | 5601 | default   |
+| API           | 5000 | `api`     |
+| SQL Server    | 1433 | host (not containerized) |
 
 ---
 

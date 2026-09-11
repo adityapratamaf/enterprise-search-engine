@@ -1,34 +1,22 @@
+# =============================================================================
+# Stack infrastruktur untuk pengembangan lokal.
+#
+# SQL Server TIDAK dijalankan di sini — database memakai instance lokal yang
+# terpasang langsung di host. Service di file ini hanya melengkapi apa yang
+# tidak praktis dipasang natif: Seq, Elasticsearch, dan Kibana.
+#
+#   docker compose up -d
+#       menjalankan Seq + Elasticsearch + Kibana. Backend dijalankan terpisah
+#       lewat `dotnet run` dan terhubung ke semuanya via localhost.
+#
+#   docker compose --profile api up -d
+#       tambahan: menjalankan backend di dalam container. Pada mode ini
+#       backend terhubung ke SQL Server host lewat host.docker.internal, jadi
+#       instance lokal harus mengaktifkan TCP/IP dan SQL Server Authentication
+#       (Windows Authentication tidak tersedia dari container Linux).
+# =============================================================================
+
 services:
-
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: searchengine-sqlserver
-
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
-
-    ports:
-      - "1433:1433"
-
-    volumes:
-      - sqlserver-data:/var/opt/mssql
-
-    restart: unless-stopped
-
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -Q \"SELECT 1\" -C"
-        ]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-
-    networks:
-      - searchengine-network
 
   seq:
     image: datalust/seq:latest
@@ -220,22 +208,32 @@ services:
     networks:
       - searchengine-network
 
+  # ==========================================================================
+  # Backend di dalam container — OPSIONAL, aktif hanya dengan profile "api".
+  # Alur pengembangan normal menjalankan backend lewat `dotnet run` di host.
+  # ==========================================================================
   api:
     container_name: searchengine-api
+
+    profiles:
+      - api
 
     build:
       context: .
       dockerfile: src/Presentation/SearchEngine.WebAPI/Dockerfile
 
     depends_on:
-      sqlserver:
-        condition: service_healthy
-
       seq:
         condition: service_started
 
       elasticsearch:
         condition: service_healthy
+
+    # Memetakan host.docker.internal ke host. Sudah tersedia otomatis pada
+    # Docker Desktop (Windows/macOS); baris ini membuatnya bekerja juga di
+    # Docker Engine pada Linux.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     ports:
       - "5000:8080"
@@ -244,33 +242,30 @@ services:
 
       ASPNETCORE_ENVIRONMENT: Docker
 
+      # SQL Server berjalan di host, bukan sebagai container. Instance lokal
+      # harus mengaktifkan protokol TCP/IP dan mengizinkan port 1433 pada
+      # firewall. Autentikasi wajib SQL Server Authentication — Windows
+      # Authentication tidak dapat dipakai dari container Linux.
       ConnectionStrings__BusinessConnection: >
-        Server=sqlserver;
-        Database=SearchEngineBusinessDB;
-        User Id=sa;
-        Password=${SA_PASSWORD};
+        Server=${DB_HOST:-host.docker.internal},${DB_PORT:-1433};
+        Database=${DB_BUSINESS_NAME:-SearchEngineBusinessDB};
+        User Id=${DB_USER};
+        Password=${DB_PASSWORD};
         TrustServerCertificate=True;
 
       ConnectionStrings__IdentityConnection: >
-        Server=sqlserver;
-        Database=SearchEngineIdentityDB;
-        User Id=sa;
-        Password=${SA_PASSWORD};
+        Server=${DB_HOST:-host.docker.internal},${DB_PORT:-1433};
+        Database=${DB_IDENTITY_NAME:-SearchEngineIdentityDB};
+        User Id=${DB_USER};
+        Password=${DB_PASSWORD};
         TrustServerCertificate=True;
 
       ConnectionStrings__HangfireConnection: >
-        Server=sqlserver;
-        Database=SearchEngineHangfireDB;
-        User Id=sa;
-        Password=${SA_PASSWORD};
+        Server=${DB_HOST:-host.docker.internal},${DB_PORT:-1433};
+        Database=${DB_HANGFIRE_NAME:-SearchEngineHangfireDB};
+        User Id=${DB_USER};
+        Password=${DB_PASSWORD};
         TrustServerCertificate=True;
-      
-      # ConnectionStrings__HangfireConnection: >
-      #   Server=sqlserver;
-      #   Database=SearchEngineBusinessDB;
-      #   User Id=sa;
-      #   Password=${SA_PASSWORD};
-      #   TrustServerCertificate=True;
 
       JwtSettings__Secret: ${JWT_SECRET}
 
@@ -317,7 +312,6 @@ services:
       - searchengine-network
 
 volumes:
-  sqlserver-data:
   seq-data:
   elasticsearch-data:
   kibana-data:
