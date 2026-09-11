@@ -11,6 +11,22 @@ public interface IApplicationBusinessDbContext
 
     DbSet<EmailOutbox> EmailOutboxes { get; }
 
+    // ---- Domain SPBU / BBM ----
+
+    DbSet<Regional> Regionals { get; }
+
+    DbSet<Wilayah> Wilayahs { get; }
+
+    DbSet<ProdukBbm> ProdukBbms { get; }
+
+    DbSet<Fasilitas> Fasilitas { get; }
+
+    DbSet<Spbu> Spbus { get; }
+
+    DbSet<SpbuProduk> SpbuProduks { get; }
+
+    DbSet<SpbuFasilitas> SpbuFasilitas { get; }
+
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken);
 }

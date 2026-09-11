@@ -25,6 +25,29 @@ public class ApplicationBusinessDbContext
     public DbSet<EmailOutbox> EmailOutboxes
         => Set<EmailOutbox>();
 
+    // ---- Domain SPBU / BBM ----
+
+    public DbSet<Regional> Regionals
+        => Set<Regional>();
+
+    public DbSet<Wilayah> Wilayahs
+        => Set<Wilayah>();
+
+    public DbSet<ProdukBbm> ProdukBbms
+        => Set<ProdukBbm>();
+
+    public DbSet<Fasilitas> Fasilitas
+        => Set<Fasilitas>();
+
+    public DbSet<Spbu> Spbus
+        => Set<Spbu>();
+
+    public DbSet<SpbuProduk> SpbuProduks
+        => Set<SpbuProduk>();
+
+    public DbSet<SpbuFasilitas> SpbuFasilitas
+        => Set<SpbuFasilitas>();
+
     protected override void OnModelCreating(
         ModelBuilder builder)
     {
