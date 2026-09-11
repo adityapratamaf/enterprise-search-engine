@@ -170,6 +170,7 @@ var app = builder.Build();
 //   racing on MigrateAsync() during a rolling/blue-green deployment.
 var runDatabaseInit =
     args.Contains("--migrate")
+    || args.Contains("--seed-demo")
     || app.Environment.IsDevelopment()
     || app.Configuration.GetValue<bool>(
         "Database:MigrateOnStartup");
@@ -182,6 +183,25 @@ if (runDatabaseInit)
 if (args.Contains("--migrate"))
 {
     // Migration/seed job: apply and exit without starting the web host.
+    return;
+}
+
+if (args.Contains("--seed-demo"))
+{
+    // Membangkitkan data SPBU tiruan lalu keluar tanpa menyalakan web host.
+    // Jumlahnya dapat diatur: --seed-demo --count 25000
+    var countIndex =
+        Array.IndexOf(args, "--count");
+
+    var demoCount =
+        countIndex >= 0
+        && countIndex + 1 < args.Length
+        && int.TryParse(args[countIndex + 1], out var parsed)
+            ? parsed
+            : 10_000;
+
+    await app.SeedDemoDataAsync(demoCount);
+
     return;
 }
 

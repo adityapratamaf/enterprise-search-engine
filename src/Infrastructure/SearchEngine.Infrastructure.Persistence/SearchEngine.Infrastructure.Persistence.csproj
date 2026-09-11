@@ -14,4 +14,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Data wilayah administratif disematkan ke dalam assembly agar seeder
+         tidak bergantung pada file yang harus ikut ter-deploy. -->
+    <EmbeddedResource Include="Seed\Data\wilayah.json" />
+  </ItemGroup>
+
 </Project>
