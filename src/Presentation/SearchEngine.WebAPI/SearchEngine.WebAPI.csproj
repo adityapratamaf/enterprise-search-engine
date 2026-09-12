@@ -50,6 +50,14 @@
     <ProjectReference Include="..\..\Infrastructure\SearchEngine.Infrastructure.Identity\SearchEngine.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\..\Infrastructure\SearchEngine.Infrastructure.Shared\SearchEngine.Infrastructure.Shared.csproj" />
     <ProjectReference Include="..\..\Infrastructure\SearchEngine.Infrastructure.Search\SearchEngine.Infrastructure.Search.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\SearchEngine.Infrastructure.Ocr\SearchEngine.Infrastructure.Ocr.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Berkas data bahasa Tesseract. Polanya boleh tidak cocok apa pun:
+         berkasnya tidak ikut repositori dan disalin terpisah, sementara
+         aplikasi tetap berjalan normal tanpanya. -->
+    <None Include="tessdata\*.traineddata" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

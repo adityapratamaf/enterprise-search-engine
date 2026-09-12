@@ -3,6 +3,7 @@ using SearchEngine.Application;
 using SearchEngine.Infrastructure.Identity;
 using SearchEngine.Infrastructure.Shared;
 using SearchEngine.Infrastructure.Persistence;
+using SearchEngine.Infrastructure.Ocr;
 using SearchEngine.Infrastructure.Search;
 using SearchEngine.WebAPI.Middleware;
 using SearchEngine.WebAPI.Authorization;
@@ -93,6 +94,11 @@ builder.Services.AddSharedInfrastructure(
 
 // Elasticsearch
 builder.Services.AddSearchInfrastructure(
+    builder.Configuration);
+
+
+// OCR (pencarian lewat gambar)
+builder.Services.AddOcrInfrastructure(
     builder.Configuration);
 
 

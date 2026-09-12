@@ -6,6 +6,7 @@
   </Folder>
   <Folder Name="/src/Infrastructure/">
     <Project Path="src/Infrastructure/SearchEngine.Infrastructure.Identity/SearchEngine.Infrastructure.Identity.csproj" />
+    <Project Path="src/Infrastructure/SearchEngine.Infrastructure.Ocr/SearchEngine.Infrastructure.Ocr.csproj" />
     <Project Path="src/Infrastructure/SearchEngine.Infrastructure.Persistence/SearchEngine.Infrastructure.Persistence.csproj" />
     <Project Path="src/Infrastructure/SearchEngine.Infrastructure.Search/SearchEngine.Infrastructure.Search.csproj" />
     <Project Path="src/Infrastructure/SearchEngine.Infrastructure.Shared/SearchEngine.Infrastructure.Shared.csproj" />

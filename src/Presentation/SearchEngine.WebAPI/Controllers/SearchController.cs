@@ -3,6 +3,7 @@ using SearchEngine.Application.Common.Security;
 using SearchEngine.Application.Features.Search.DTOs;
 using SearchEngine.Application.Features.Search.Queries.BenchmarkSearch;
 using SearchEngine.Application.Features.Search.Queries.SearchSpbu;
+using SearchEngine.Application.Features.Search.Queries.SearchSpbuByImage;
 using SearchEngine.Application.Features.Search.Queries.SuggestSpbu;
 using SearchEngine.WebAPI.Jobs;
 
@@ -77,6 +78,51 @@ public class SearchController : ControllerBase
         var result =
             await _mediator.Send(
                 new SuggestSpbuQuery(q, limit));
+
+        return Ok(result);
+    }
+
+    // =====================================================
+    // PENCARIAN LEWAT GAMBAR
+    // =====================================================
+
+    [HttpPost("spbu/image")]
+    [HasPermission("search", "view")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    [EndpointDescription(
+        "Mencari SPBU dari foto: tulisan pada gambar dibaca, diubah menjadi "
+        + "kata kunci, lalu dicari melalui jalur pencarian yang sama persis "
+        + "dengan endpoint pencarian biasa — dengan Elasticsearch. "
+        + "Bila gambar memuat kode SPBU, kode itu yang dipakai karena paling "
+        + "menentukan; bila tidak, diambil kata-kata yang membedakan. "
+        + "Teks mentah hasil pembacaan ikut dikembalikan supaya pengguna "
+        + "dapat menilai sendiri dan memperbaiki kata kuncinya bila perlu. "
+        + "Menerima PNG atau JPEG, maksimal 10 MB.")]
+    public async Task<IActionResult> SearchSpbuByImage(
+        IFormFile file,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(
+                Result<object>.Failure("Berkas gambar wajib diunggah."));
+        }
+
+        using var memori = new MemoryStream();
+
+        await file.CopyToAsync(
+            memori,
+            HttpContext.RequestAborted);
+
+        var result =
+            await _mediator.Send(
+                new SearchSpbuByImageQuery(
+                    memori.ToArray(),
+                    file.FileName,
+                    pageNumber,
+                    pageSize));
 
         return Ok(result);
     }
