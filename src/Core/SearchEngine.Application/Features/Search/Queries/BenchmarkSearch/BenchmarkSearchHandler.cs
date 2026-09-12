@@ -55,17 +55,18 @@ public class BenchmarkSearchHandler
     {
         var req = request.Request;
 
+        var es = Ambil(SearchEngineKind.Elasticsearch);
+
+        var sql = Ambil(SearchEngineKind.Sql);
+
         var hasilEs =
-            await UkurAsync(
-                Ambil(SearchEngineKind.Elasticsearch),
-                req,
-                cancellationToken);
+            await UkurAsync(es, req, cancellationToken);
 
         var hasilSql =
-            await UkurAsync(
-                Ambil(SearchEngineKind.Sql),
-                req,
-                cancellationToken);
+            await UkurAsync(sql, req, cancellationToken);
+
+        var totalDokumen =
+            await es.HitungDokumenAsync(cancellationToken);
 
         // Yang menemukan lebih banyak dinyatakan unggul; bila jumlahnya
         // sama, yang lebih cepat.
@@ -91,6 +92,7 @@ public class BenchmarkSearchHandler
         {
             Kueri = req.Search,
             Iterasi = Math.Clamp(req.Iterasi, 1, 10),
+            TotalDokumen = totalDokumen,
             Pemenang =
                 esMenang
                     ? SearchEngineKind.Elasticsearch
@@ -120,7 +122,7 @@ public class BenchmarkSearchHandler
         bool esMenang,
         double kali)
     {
-        var pemenang = esMenang ? "Elasticsearch" : "SQL";
+        var pemenang = esMenang ? "Elasticsearch" : "SQL Server";
 
         var selisih =
             Math.Abs(es.TotalHasil - sql.TotalHasil);
@@ -140,14 +142,30 @@ public class BenchmarkSearchHandler
         BenchmarkRequest req,
         CancellationToken cancellationToken)
     {
-        var contoh = Math.Clamp(req.Contoh, 0, 10);
-
         var permintaan = new SearchSpbuRequest
         {
             Search = req.Search,
             Engine = provider.Engine,
-            PageNumber = 1,
-            PageSize = Math.Max(1, contoh),
+            PageNumber = req.PageNumber,
+            PageSize = req.PageSize,
+            SortBy = req.SortBy,
+            IsDescending = req.IsDescending,
+
+            Regional = req.Regional,
+            Provinsi = req.Provinsi,
+            Kota = req.Kota,
+            Produk = req.Produk,
+            Fasilitas = req.Fasilitas,
+            Status = req.Status,
+            TipeKepemilikan = req.TipeKepemilikan,
+
+            Lat = req.Lat,
+            Lon = req.Lon,
+            RadiusKm = req.RadiusKm,
+
+            // Facet dimatikan: hanya salah satu mesin yang mampu
+            // menghasilkannya, sehingga menyertakannya akan membebani satu
+            // pihak dengan pekerjaan yang tidak dilakukan pihak lain.
             IncludeFacets = false
         };
 
@@ -181,12 +199,54 @@ public class BenchmarkSearchHandler
             Engine = provider.Engine,
             WaktuMs = Median(pengukuran),
             TotalHasil = terakhir?.TotalCount ?? 0,
-
-            Contoh =
-                contoh == 0
-                    ? []
-                    : terakhir?.Items.Take(contoh).ToList() ?? []
+            PageNumber = terakhir?.PageNumber ?? req.PageNumber,
+            PageSize = terakhir?.PageSize ?? req.PageSize,
+            TotalPages = terakhir?.TotalPages ?? 0,
+            Urutan = LabelUrutan(provider.Engine, req),
+            Items = terakhir?.Items ?? []
         };
+    }
+
+    /// <summary>
+    /// Menyusun keterangan dasar pengurutan yang dipakai. Untuk permintaan
+    /// yang sama, kedua mesin bisa menghasilkan label berbeda: tanpa kolom
+    /// urut yang eksplisit, Elasticsearch memeringkat berdasarkan relevansi
+    /// sedangkan SQL hanya mampu mengurutkan menurut abjad.
+    /// </summary>
+    private static string LabelUrutan(
+        SearchEngineKind engine,
+        BenchmarkRequest req)
+    {
+        var arah = req.IsDescending ? "Z - A" : "A - Z";
+
+        switch (req.SortBy?.Trim().ToLowerInvariant())
+        {
+            case "nama":
+                return $"Nama {arah}";
+
+            case "kode":
+                return req.IsDescending
+                    ? "Kode menurun"
+                    : "Kode menaik";
+
+            case "nozzle":
+                return req.IsDescending
+                    ? "Nozzle terbanyak"
+                    : "Nozzle tersedikit";
+
+            case "jarak"
+                when engine == SearchEngineKind.Elasticsearch
+                    && req.Lat.HasValue:
+                return "Jarak terdekat";
+        }
+
+        if (engine == SearchEngineKind.Elasticsearch
+            && !string.IsNullOrWhiteSpace(req.Search))
+        {
+            return "Relevansi";
+        }
+
+        return $"Nama {arah}";
     }
 
     private static double Median(

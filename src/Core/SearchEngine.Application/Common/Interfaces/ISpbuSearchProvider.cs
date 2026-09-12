@@ -18,4 +18,12 @@ public interface ISpbuSearchProvider
     Task<SearchSpbuResponse> SearchAsync(
         SearchSpbuRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Besar keseluruhan kumpulan data yang dilayani mesin ini, tanpa
+    /// penyaring apa pun. Dipakai untuk menyatakan skala pengujian —
+    /// "48 ms dari sejuta dokumen" bermakna lain dari "48 ms dari seribu".
+    /// </summary>
+    Task<long> HitungDokumenAsync(
+        CancellationToken cancellationToken = default);
 }

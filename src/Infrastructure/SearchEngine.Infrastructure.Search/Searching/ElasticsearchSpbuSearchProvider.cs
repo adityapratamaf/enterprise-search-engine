@@ -84,6 +84,26 @@ public sealed class ElasticsearchSpbuSearchProvider
         return Baca(respons, request);
     }
 
+    public async Task<long> HitungDokumenAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var alias =
+            SearchIndexNames.SpbuAlias(_options.IndexPrefix);
+
+        var respons =
+            await _gateway.SendAsync(
+                HttpMethod.GET,
+                $"{alias}/_count",
+                null,
+                cancellationToken: cancellationToken);
+
+        using var doc = JsonDocument.Parse(respons);
+
+        return doc.RootElement.TryGetProperty("count", out var c)
+            ? c.GetInt64()
+            : 0;
+    }
+
     // =====================================================================
     // MENYUSUN KUERI
     // =====================================================================

@@ -15,6 +15,12 @@ public sealed class BenchmarkResponse
     /// <summary>Banyaknya pengukuran; waktu yang dilaporkan adalah mediannya.</summary>
     public int Iterasi { get; set; }
 
+    /// <summary>
+    /// Besar keseluruhan kumpulan data yang diuji — seluruh SPBU yang
+    /// terindeks, bukan hanya yang cocok dengan kata kunci.
+    /// </summary>
+    public long TotalDokumen { get; set; }
+
     /// <summary>Mesin yang unggul pada kueri ini.</summary>
     public SearchEngineKind Pemenang { get; set; }
 
@@ -37,6 +43,18 @@ public sealed class BenchmarkEngineResult
 
     public int TotalHasil { get; set; }
 
-    /// <summary>Beberapa hasil teratas, untuk ditampilkan berdampingan.</summary>
-    public List<SpbuSearchItem> Contoh { get; set; } = [];
+    public int PageNumber { get; set; }
+
+    public int PageSize { get; set; }
+
+    public int TotalPages { get; set; }
+
+    /// <summary>
+    /// Dasar pengurutan yang benar-benar dipakai mesin ini, mis.
+    /// "Relevansi" atau "Nama A - Z". Keduanya bisa berbeda untuk permintaan
+    /// yang sama, karena SQL tidak mengenal skor relevansi.
+    /// </summary>
+    public string Urutan { get; set; } = default!;
+
+    public List<SpbuSearchItem> Items { get; set; } = [];
 }

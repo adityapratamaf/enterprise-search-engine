@@ -15,10 +15,6 @@
           "type": "stop",
           "stopwords": "_indonesian_"
         },
-        "id_stemmer": {
-          "type": "stemmer",
-          "language": "indonesian"
-        },
         "id_sinonim": {
           "type": "synonym_graph",
           "lenient": true,
@@ -44,11 +40,11 @@
       "analyzer": {
         "alamat_index": {
           "tokenizer": "standard",
-          "filter": ["lowercase", "id_stop", "id_stemmer"]
+          "filter": ["lowercase", "id_stop"]
         },
         "alamat_search": {
           "tokenizer": "standard",
-          "filter": ["lowercase", "id_sinonim", "id_stop", "id_stemmer"]
+          "filter": ["lowercase", "id_sinonim", "id_stop"]
         },
         "kode_spbu": {
           "tokenizer": "keyword",

@@ -304,6 +304,14 @@ public sealed class SqlSpbuSearchProvider
         };
     }
 
+    public async Task<long> HitungDokumenAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Spbus
+            .AsNoTracking()
+            .LongCountAsync(cancellationToken);
+    }
+
     private static IQueryable<Spbu> Urutkan(
         IQueryable<Spbu> query,
         SearchSpbuRequest request)
