@@ -196,6 +196,11 @@ public sealed class ElasticsearchSpbuSearchProvider
         TambahTerms(filter, "status", request.Status);
         TambahTerms(filter, "tipeKepemilikan", request.TipeKepemilikan);
 
+        // Rating kosong otomatis tersaring keluar: klausa range tidak
+        // pernah cocok dengan field yang tidak ada nilainya.
+        TambahMinimum(filter, "rating", request.RatingMin);
+        TambahMinimum(filter, "jumlahUlasan", request.UlasanMin);
+
         if (adaGeo)
         {
             filter.Add(new JsonObject
@@ -292,6 +297,19 @@ public sealed class ElasticsearchSpbuSearchProvider
                 sort.Add(new JsonObject { ["jumlahNozzle"] = arah });
                 break;
 
+            case "rating":
+                // Rating kosong ditempatkan paling belakang, bukan
+                // dianggap bernilai nol.
+                sort.Add(new JsonObject
+                {
+                    ["rating"] = new JsonObject
+                    {
+                        ["order"] = arah,
+                        ["missing"] = "_last"
+                    }
+                });
+                break;
+
             case "jarak" when adaGeo:
                 sort.Add(new JsonObject
                 {
@@ -329,6 +347,28 @@ public sealed class ElasticsearchSpbuSearchProvider
         sort.Add(new JsonObject { ["id"] = "asc" });
 
         return sort;
+    }
+
+    private static void TambahMinimum(
+        JsonArray filter,
+        string field,
+        double? minimum)
+    {
+        if (minimum is null)
+        {
+            return;
+        }
+
+        filter.Add(new JsonObject
+        {
+            ["range"] = new JsonObject
+            {
+                [field] = new JsonObject
+                {
+                    ["gte"] = minimum
+                }
+            }
+        });
     }
 
     private static void TambahTerms(
@@ -417,6 +457,8 @@ public sealed class ElasticsearchSpbuSearchProvider
                 JumlahNozzle = dokumen.JumlahNozzle,
                 TanggalOperasi = dokumen.TanggalOperasi,
                 NomorTelepon = dokumen.NomorTelepon,
+                Rating = dokumen.Rating,
+                JumlahUlasan = dokumen.JumlahUlasan,
                 Latitude = dokumen.Lokasi.Lat,
                 Longitude = dokumen.Lokasi.Lon,
                 Produk = dokumen.Produk,

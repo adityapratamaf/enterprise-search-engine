@@ -47,6 +47,10 @@ public sealed class BenchmarkRequest
 
     public string[]? TipeKepemilikan { get; set; }
 
+    public double? RatingMin { get; set; }
+
+    public int? UlasanMin { get; set; }
+
     // ---- Penyaring jarak ----
 
     public double? Lat { get; set; }

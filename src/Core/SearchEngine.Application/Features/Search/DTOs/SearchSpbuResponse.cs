@@ -83,6 +83,11 @@ public sealed class SpbuSearchItem
 
     public string? NomorTelepon { get; set; }
 
+    /// <summary>Rata-rata penilaian; <c>null</c> bila belum ada ulasan.</summary>
+    public decimal? Rating { get; set; }
+
+    public int JumlahUlasan { get; set; }
+
     public double Latitude { get; set; }
 
     public double Longitude { get; set; }

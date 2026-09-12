@@ -137,6 +137,23 @@ public sealed class SqlSpbuSearchProvider
             query = query.Where(x => tipe.Contains(x.TipeKepemilikan));
         }
 
+        // ---- Penyaring penilaian ----
+
+        if (request.RatingMin.HasValue)
+        {
+            var minimum = (decimal)request.RatingMin.Value;
+
+            query = query.Where(x =>
+                x.Rating != null && x.Rating >= minimum);
+        }
+
+        if (request.UlasanMin.HasValue)
+        {
+            var minimum = request.UlasanMin.Value;
+
+            query = query.Where(x => x.JumlahUlasan >= minimum);
+        }
+
         // ---- Yang tidak dapat dilayani ----
 
         if (request.Lat.HasValue && request.RadiusKm.HasValue)
@@ -200,6 +217,8 @@ public sealed class SqlSpbuSearchProvider
                     x.JumlahNozzle,
                     x.TanggalOperasi,
                     x.NomorTelepon,
+                    x.Rating,
+                    x.JumlahUlasan,
                     x.Latitude,
                     x.Longitude
                 })
@@ -263,6 +282,8 @@ public sealed class SqlSpbuSearchProvider
                     JumlahNozzle = x.JumlahNozzle,
                     TanggalOperasi = x.TanggalOperasi,
                     NomorTelepon = x.NomorTelepon,
+                    Rating = x.Rating,
+                    JumlahUlasan = x.JumlahUlasan,
                     Latitude = x.Latitude,
                     Longitude = x.Longitude,
                     Produk = p?.Select(y => y.Kode).ToArray() ?? [],
@@ -330,6 +351,10 @@ public sealed class SqlSpbuSearchProvider
             "nozzle" => turun
                 ? query.OrderByDescending(x => x.JumlahNozzle)
                 : query.OrderBy(x => x.JumlahNozzle),
+
+            "rating" => turun
+                ? query.OrderByDescending(x => x.Rating)
+                : query.OrderBy(x => x.Rating),
 
             _ => turun
                 ? query.OrderByDescending(x => x.Nama)

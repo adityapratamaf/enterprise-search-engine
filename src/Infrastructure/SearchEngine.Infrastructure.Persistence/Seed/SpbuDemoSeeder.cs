@@ -308,6 +308,8 @@ public static class SpbuDemoSeeder
 
         var dispenser = random.Next(2, 9);
 
+        var (rating, jumlahUlasan) = BuatPenilaian(random);
+
         return new Spbu
         {
             Id = Guid.NewGuid(),
@@ -334,8 +336,46 @@ public static class SpbuDemoSeeder
                 new DateTime(1995, 1, 1, 0, 0, 0, DateTimeKind.Utc)
                     .AddDays(random.Next(0, 11_000)),
             NomorTelepon =
-                $"0{random.Next(21, 99)}-{random.Next(1000000, 9999999)}"
+                $"0{random.Next(21, 99)}-{random.Next(1000000, 9999999)}",
+
+            Rating = rating,
+            JumlahUlasan = jumlahUlasan
         };
+    }
+
+    /// <summary>
+    /// Membangkitkan penilaian yang sebarannya menyerupai kenyataan.
+    ///
+    /// Sebagian SPBU sengaja dibiarkan tanpa ulasan sama sekali — keadaan
+    /// yang lumrah pada tempat yang baru beroperasi atau jarang dilewati,
+    /// dan berguna untuk memastikan tampilan menangani rating kosong.
+    ///
+    /// Sisanya memakai rata-rata dua undian acak, sehingga nilainya
+    /// menumpuk di sekitar 4,0 alih-alih tersebar rata. Penilaian nyata
+    /// memang berperilaku begitu: sangat sedikit yang benar-benar buruk
+    /// atau benar-benar sempurna.
+    /// </summary>
+    private static (decimal? Rating, int JumlahUlasan) BuatPenilaian(
+        Random random)
+    {
+        // Sekitar 8% belum punya ulasan.
+        if (random.Next(100) < 8)
+        {
+            return (null, 0);
+        }
+
+        var condong =
+            (random.NextDouble() + random.NextDouble()) / 2;
+
+        var rating =
+            Math.Round(3.0 + condong * 2.0, 1);
+
+        // Ekor panjang: kebanyakan puluhan ulasan, sedikit yang ratusan.
+        var jumlah =
+            (int)Math.Round(
+                5 + Math.Pow(random.NextDouble(), 2.2) * 600);
+
+        return ((decimal)rating, jumlah);
     }
 
     private static (TipeKepemilikanSpbu Tipe, int Digit) PilihKepemilikan(

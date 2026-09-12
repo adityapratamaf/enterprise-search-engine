@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SearchEngine.Infrastructure.Persistence.Context;
 
@@ -11,9 +12,11 @@ using SearchEngine.Infrastructure.Persistence.Context;
 namespace SearchEngine.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationBusinessDbContext))]
-    partial class ApplicationBusinessDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260912092427_AddSpbuRating")]
+    partial class AddSpbuRating
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

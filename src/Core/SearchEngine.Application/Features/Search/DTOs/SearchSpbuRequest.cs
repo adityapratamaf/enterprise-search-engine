@@ -46,6 +46,20 @@ public class SearchSpbuRequest
     /// <summary>Pola kepemilikan, mis. "Dodo".</summary>
     public string[]? TipeKepemilikan { get; set; }
 
+    /// <summary>
+    /// Rating minimal, 1,0-5,0. SPBU yang belum punya ulasan otomatis
+    /// tersaring keluar — tidak dinilai bukan berarti bernilai rendah,
+    /// tetapi juga tidak memenuhi ambang apa pun.
+    /// </summary>
+    public double? RatingMin { get; set; }
+
+    /// <summary>
+    /// Jumlah ulasan minimal. Berguna dipasangkan dengan
+    /// <see cref="RatingMin"/>: rating 5,0 dari satu ulasan tidak sebanding
+    /// dengan 4,5 dari tiga ratus.
+    /// </summary>
+    public int? UlasanMin { get; set; }
+
     // ---- Penyaring jarak ----
 
     public double? Lat { get; set; }

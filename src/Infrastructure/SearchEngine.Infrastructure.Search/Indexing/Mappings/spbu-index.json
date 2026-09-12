@@ -110,6 +110,9 @@
       "tanggalOperasi": { "type": "date" },
       "nomorTelepon": { "type": "keyword" },
 
+      "rating": { "type": "half_float" },
+      "jumlahUlasan": { "type": "integer" },
+
       "lokasi": { "type": "geo_point" },
 
       "produk": { "type": "keyword" },

@@ -77,6 +77,16 @@ public sealed class SpbuDocument
     [JsonPropertyName("nomorTelepon")]
     public string? NomorTelepon { get; set; }
 
+    /// <summary>
+    /// Rata-rata penilaian, 1,0-5,0. <c>null</c> bila belum ada ulasan —
+    /// berbeda artinya dari nol.
+    /// </summary>
+    [JsonPropertyName("rating")]
+    public decimal? Rating { get; set; }
+
+    [JsonPropertyName("jumlahUlasan")]
+    public int JumlahUlasan { get; set; }
+
     [JsonPropertyName("lokasi")]
     public SpbuLokasi Lokasi { get; set; } = new();
 

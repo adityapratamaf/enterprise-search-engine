@@ -159,6 +159,9 @@ public class BenchmarkSearchHandler
             Status = req.Status,
             TipeKepemilikan = req.TipeKepemilikan,
 
+            RatingMin = req.RatingMin,
+            UlasanMin = req.UlasanMin,
+
             Lat = req.Lat,
             Lon = req.Lon,
             RadiusKm = req.RadiusKm,

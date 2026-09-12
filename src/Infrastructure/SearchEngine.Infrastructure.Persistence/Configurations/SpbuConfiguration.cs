@@ -50,6 +50,18 @@ public class SpbuConfiguration
 
         builder.HasIndex(x => x.Status);
 
+        // Satu angka desimal sudah cukup untuk penilaian bintang; presisi
+        // yang lebih longgar hanya akan menyimpan angka yang tidak pernah
+        // ditampilkan.
+        builder.Property(x => x.Rating)
+            .HasPrecision(2, 1);
+
+        // Menopang penyaringan "rating minimal" dan pengurutan menurut
+        // rating pada sisi SQL, supaya pembandingannya dengan Elasticsearch
+        // tetap setara.
+        builder.HasIndex(x => x.Rating)
+            .HasFilter("[IsDeleted] = 0");
+
         builder.HasIndex(x => x.Nama)
             .HasFilter("[IsDeleted] = 0");
 

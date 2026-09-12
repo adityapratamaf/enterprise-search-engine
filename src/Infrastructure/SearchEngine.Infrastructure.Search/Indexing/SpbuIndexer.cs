@@ -458,6 +458,8 @@ public sealed class SpbuIndexer
         public int JumlahNozzle { get; init; }
         public DateTime? TanggalOperasi { get; init; }
         public string? NomorTelepon { get; init; }
+        public decimal? Rating { get; init; }
+        public int JumlahUlasan { get; init; }
         public double Latitude { get; init; }
         public double Longitude { get; init; }
     }
@@ -507,6 +509,8 @@ public sealed class SpbuIndexer
             JumlahNozzle = x.JumlahNozzle,
             TanggalOperasi = x.TanggalOperasi,
             NomorTelepon = x.NomorTelepon,
+            Rating = x.Rating,
+            JumlahUlasan = x.JumlahUlasan,
             Latitude = x.Latitude,
             Longitude = x.Longitude
         });
@@ -604,6 +608,8 @@ public sealed class SpbuIndexer
                 JumlahNozzle = row.JumlahNozzle,
                 TanggalOperasi = row.TanggalOperasi,
                 NomorTelepon = row.NomorTelepon,
+                Rating = row.Rating,
+                JumlahUlasan = row.JumlahUlasan,
 
                 Lokasi = new SpbuLokasi
                 {

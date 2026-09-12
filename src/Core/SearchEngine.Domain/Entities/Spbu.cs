@@ -55,6 +55,23 @@ public class Spbu
 
     public string? NomorTelepon { get; set; }
 
+    /// <summary>
+    /// Rata-rata penilaian pengunjung, 1,0 sampai 5,0.
+    ///
+    /// Boleh kosong, dan itu berbeda artinya dari nol: <c>null</c> berarti
+    /// belum ada yang menilai, sedangkan nol berarti dinilai buruk oleh
+    /// semua orang. Selalu kosong ketika
+    /// <see cref="JumlahUlasan"/> bernilai nol.
+    /// </summary>
+    public decimal? Rating { get; set; }
+
+    /// <summary>
+    /// Banyaknya ulasan yang menjadi dasar <see cref="Rating"/>. Disimpan
+    /// terpisah karena rata-rata tanpa jumlah menyesatkan — 5,0 dari satu
+    /// ulasan tidak sebanding dengan 4,5 dari tiga ratus.
+    /// </summary>
+    public int JumlahUlasan { get; set; }
+
     public ICollection<SpbuProduk> Produk { get; set; } = [];
 
     public ICollection<SpbuFasilitas> Fasilitas { get; set; } = [];
