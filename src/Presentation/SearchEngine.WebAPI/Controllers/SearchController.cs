@@ -1,6 +1,7 @@
 using SearchEngine.Application.Common.Models;
 using SearchEngine.Application.Common.Security;
 using SearchEngine.Application.Features.Search.DTOs;
+using SearchEngine.Application.Features.Search.Queries.BenchmarkSearch;
 using SearchEngine.Application.Features.Search.Queries.SearchSpbu;
 using SearchEngine.Application.Features.Search.Queries.SuggestSpbu;
 using SearchEngine.WebAPI.Jobs;
@@ -76,6 +77,28 @@ public class SearchController : ControllerBase
         var result =
             await _mediator.Send(
                 new SuggestSpbuQuery(q, limit));
+
+        return Ok(result);
+    }
+
+    // =====================================================
+    // PEMBANDINGAN MESIN
+    // =====================================================
+
+    [HttpGet("spbu/benchmark")]
+    [HasPermission("search", "execute")]
+    [EndpointDescription(
+        "Menjalankan kata kunci yang sama pada Elasticsearch dan SQL Server, "
+        + "lalu mengembalikan pemenang beserta waktu dan jumlah hasil "
+        + "masing-masing. "
+        + "Berjalan sinkron dan dapat memakan beberapa detik, karena satu "
+        + "kueri SQL pada ratusan ribu baris memang selama itu.")]
+    public async Task<IActionResult> BenchmarkSpbu(
+        [FromQuery] BenchmarkRequest request)
+    {
+        var result =
+            await _mediator.Send(
+                new BenchmarkSearchQuery(request));
 
         return Ok(result);
     }
