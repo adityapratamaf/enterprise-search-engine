@@ -66,5 +66,46 @@ public class SearchSpbuValidator
             .WithMessage(
                 "Lat, Lon, dan RadiusKm harus diisi bersamaan atau dikosongkan semua.")
             .OverridePropertyName("RadiusKm");
+
+        // Keempat batas kotak peta harus diisi bersamaan — separuh kotak
+        // tidak menjelaskan area apa pun.
+        RuleFor(x => x.Request)
+            .Must(r =>
+            {
+                var terisi = new[]
+                {
+                    r.LatMin.HasValue, r.LonMin.HasValue,
+                    r.LatMax.HasValue, r.LonMax.HasValue
+                };
+
+                return terisi.All(x => x) || terisi.All(x => !x);
+            })
+            .WithMessage(
+                "LatMin, LonMin, LatMax, dan LonMax harus diisi bersamaan "
+                + "atau dikosongkan semua.")
+            .OverridePropertyName("LatMin");
+
+        RuleFor(x => x.Request)
+            .Must(r =>
+                !r.LatMin.HasValue
+                || (r.LatMin < r.LatMax && r.LonMin < r.LonMax))
+            .WithMessage(
+                "LatMin harus lebih kecil dari LatMax, dan LonMin lebih "
+                + "kecil dari LonMax.")
+            .OverridePropertyName("LatMin");
+
+        RuleFor(x => x.Request.FacetSize)
+            .InclusiveBetween(1, 600)
+            .OverridePropertyName("FacetSize");
+
+        RuleFor(x => x.Request.RatingMin)
+            .InclusiveBetween(1, 5)
+            .When(x => x.Request.RatingMin.HasValue)
+            .OverridePropertyName("RatingMin");
+
+        RuleFor(x => x.Request.UlasanMin)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.Request.UlasanMin.HasValue)
+            .OverridePropertyName("UlasanMin");
     }
 }

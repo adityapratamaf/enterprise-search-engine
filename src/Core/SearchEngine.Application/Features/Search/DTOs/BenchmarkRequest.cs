@@ -59,6 +59,14 @@ public sealed class BenchmarkRequest
 
     public double? RadiusKm { get; set; }
 
+    public double? LatMin { get; set; }
+
+    public double? LonMin { get; set; }
+
+    public double? LatMax { get; set; }
+
+    public double? LonMax { get; set; }
+
     // ---- Pengukuran ----
 
     /// <summary>

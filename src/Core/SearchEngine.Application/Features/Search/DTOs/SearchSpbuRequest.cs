@@ -72,6 +72,35 @@ public class SearchSpbuRequest
     /// </summary>
     public double? RadiusKm { get; set; }
 
+    // ---- Penyaring kotak peta ----
+
+    /// <summary>
+    /// Batas kotak peta: sudut barat daya dan timur laut. Dipakai untuk
+    /// "cari di area peta ini" — pengguna menggeser peta, lalu hasil
+    /// dibatasi pada yang terlihat.
+    ///
+    /// Berbeda dari <see cref="RadiusKm"/> yang berbentuk lingkaran,
+    /// kotak peta mengikuti bentuk layar. Keempatnya harus diisi bersamaan.
+    /// </summary>
+    public double? LatMin { get; set; }
+
+    public double? LonMin { get; set; }
+
+    public double? LatMax { get; set; }
+
+    public double? LonMax { get; set; }
+
+    /// <summary>
+    /// Banyaknya nilai teratas yang dikembalikan pada facet provinsi dan
+    /// kota. Perlu dinaikkan bila panel penyaring menyediakan kotak
+    /// pencarian sendiri, karena penyaringan di sisi klien menuntut daftar
+    /// yang utuh — ada 514 kota/kabupaten.
+    ///
+    /// Facet lain tidak terpengaruh: nilainya sedikit dan selalu
+    /// dikembalikan lengkap.
+    /// </summary>
+    public int FacetSize { get; set; } = 50;
+
     /// <summary>
     /// Menyertakan hitungan facet pada hasil. Dapat dimatikan bila klien
     /// hanya membutuhkan daftar hasil, mis. saat berpindah halaman.

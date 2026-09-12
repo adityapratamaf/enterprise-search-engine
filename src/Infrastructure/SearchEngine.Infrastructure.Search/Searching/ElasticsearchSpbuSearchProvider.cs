@@ -38,15 +38,27 @@ public sealed class ElasticsearchSpbuSearchProvider
     /// </summary>
     private const string MinimumShouldMatch = "2<75%";
 
+    /// <summary>
+    /// Facet dengan himpunan nilai kecil dan tetap — selalu dikembalikan
+    /// lengkap, sehingga ukurannya tidak perlu diatur pemanggil.
+    /// </summary>
     private static readonly (string Nama, string Field, int Ukuran)[] Facets =
     [
         ("regional", "regional", 10),
-        ("provinsi", "provinsi", 40),
-        ("kota", "kota", 25),
         ("produk", "produk", 10),
         ("fasilitas", "fasilitas", 15),
         ("status", "status", 5),
         ("tipeKepemilikan", "tipeKepemilikan", 5)
+    ];
+
+    /// <summary>
+    /// Facet wilayah: nilainya banyak (38 provinsi, 514 kota/kabupaten)
+    /// sehingga ukurannya ditentukan pemanggil lewat FacetSize.
+    /// </summary>
+    private static readonly (string Nama, string Field)[] FacetWilayah =
+    [
+        ("provinsi", "provinsi"),
+        ("kota", "kota")
     ];
 
     private readonly ElasticsearchGateway _gateway;
@@ -201,6 +213,32 @@ public sealed class ElasticsearchSpbuSearchProvider
         TambahMinimum(filter, "rating", request.RatingMin);
         TambahMinimum(filter, "jumlahUlasan", request.UlasanMin);
 
+        // Kotak peta: mengikuti bentuk layar, bukan lingkaran seperti
+        // radius. Keduanya boleh dipakai bersamaan dan saling mempersempit.
+        if (request.LatMin.HasValue && request.LonMin.HasValue
+            && request.LatMax.HasValue && request.LonMax.HasValue)
+        {
+            filter.Add(new JsonObject
+            {
+                ["geo_bounding_box"] = new JsonObject
+                {
+                    ["lokasi"] = new JsonObject
+                    {
+                        ["top_left"] = new JsonObject
+                        {
+                            ["lat"] = request.LatMax,
+                            ["lon"] = request.LonMin
+                        },
+                        ["bottom_right"] = new JsonObject
+                        {
+                            ["lat"] = request.LatMin,
+                            ["lon"] = request.LonMax
+                        }
+                    }
+                }
+            });
+        }
+
         if (adaGeo)
         {
             filter.Add(new JsonObject
@@ -260,6 +298,21 @@ public sealed class ElasticsearchSpbuSearchProvider
                     {
                         ["field"] = field,
                         ["size"] = ukuran
+                    }
+                };
+            }
+
+            var ukuranWilayah =
+                Math.Clamp(request.FacetSize, 1, 600);
+
+            foreach (var (nama, field) in FacetWilayah)
+            {
+                aggs[nama] = new JsonObject
+                {
+                    ["terms"] = new JsonObject
+                    {
+                        ["field"] = field,
+                        ["size"] = ukuranWilayah
                     }
                 };
             }
@@ -532,6 +585,13 @@ public sealed class ElasticsearchSpbuSearchProvider
                 (int)Math.Ceiling(total / (double)request.PageSize),
             TookMs = took,
             Engine = SearchEngineKind.Elasticsearch,
+            Urutan =
+                LabelUrutan.Susun(
+                    SearchEngineKind.Elasticsearch,
+                    request.SortBy,
+                    request.IsDescending,
+                    !string.IsNullOrWhiteSpace(request.Search),
+                    request.Lat.HasValue),
             Facets = facets,
             Kemampuan = new SearchCapabilities
             {

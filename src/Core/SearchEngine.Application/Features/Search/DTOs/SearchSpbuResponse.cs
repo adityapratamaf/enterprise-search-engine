@@ -26,6 +26,12 @@ public sealed class SearchSpbuResponse
     public SearchEngineKind Engine { get; set; }
 
     /// <summary>
+    /// Dasar pengurutan yang benar-benar dipakai, mis. "Relevansi" atau
+    /// "Nama A - Z". Ditampilkan pada kendali "Urutkan".
+    /// </summary>
+    public string Urutan { get; set; } = default!;
+
+    /// <summary>
     /// Hitungan per nilai untuk panel penyaring. <c>null</c> bila mesin yang
     /// dipakai tidak mampu menghasilkannya — bukan berarti tidak ada hasil.
     /// Kunci: regional, provinsi, kota, produk, fasilitas, status,

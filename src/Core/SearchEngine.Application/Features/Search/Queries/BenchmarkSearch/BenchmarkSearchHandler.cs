@@ -166,6 +166,11 @@ public class BenchmarkSearchHandler
             Lon = req.Lon,
             RadiusKm = req.RadiusKm,
 
+            LatMin = req.LatMin,
+            LonMin = req.LonMin,
+            LatMax = req.LatMax,
+            LonMax = req.LonMax,
+
             // Facet dimatikan: hanya salah satu mesin yang mampu
             // menghasilkannya, sehingga menyertakannya akan membebani satu
             // pihak dengan pekerjaan yang tidak dilakukan pihak lain.
@@ -205,51 +210,9 @@ public class BenchmarkSearchHandler
             PageNumber = terakhir?.PageNumber ?? req.PageNumber,
             PageSize = terakhir?.PageSize ?? req.PageSize,
             TotalPages = terakhir?.TotalPages ?? 0,
-            Urutan = LabelUrutan(provider.Engine, req),
+            Urutan = terakhir?.Urutan ?? string.Empty,
             Items = terakhir?.Items ?? []
         };
-    }
-
-    /// <summary>
-    /// Menyusun keterangan dasar pengurutan yang dipakai. Untuk permintaan
-    /// yang sama, kedua mesin bisa menghasilkan label berbeda: tanpa kolom
-    /// urut yang eksplisit, Elasticsearch memeringkat berdasarkan relevansi
-    /// sedangkan SQL hanya mampu mengurutkan menurut abjad.
-    /// </summary>
-    private static string LabelUrutan(
-        SearchEngineKind engine,
-        BenchmarkRequest req)
-    {
-        var arah = req.IsDescending ? "Z - A" : "A - Z";
-
-        switch (req.SortBy?.Trim().ToLowerInvariant())
-        {
-            case "nama":
-                return $"Nama {arah}";
-
-            case "kode":
-                return req.IsDescending
-                    ? "Kode menurun"
-                    : "Kode menaik";
-
-            case "nozzle":
-                return req.IsDescending
-                    ? "Nozzle terbanyak"
-                    : "Nozzle tersedikit";
-
-            case "jarak"
-                when engine == SearchEngineKind.Elasticsearch
-                    && req.Lat.HasValue:
-                return "Jarak terdekat";
-        }
-
-        if (engine == SearchEngineKind.Elasticsearch
-            && !string.IsNullOrWhiteSpace(req.Search))
-        {
-            return "Relevansi";
-        }
-
-        return $"Nama {arah}";
     }
 
     private static double Median(

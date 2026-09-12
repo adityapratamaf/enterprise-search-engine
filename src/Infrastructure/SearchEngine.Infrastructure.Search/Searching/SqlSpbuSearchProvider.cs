@@ -154,6 +154,23 @@ public sealed class SqlSpbuSearchProvider
             query = query.Where(x => x.JumlahUlasan >= minimum);
         }
 
+        // ---- Penyaring kotak peta ----
+        // Berbeda dari radius, kotak peta TIDAK memerlukan kemampuan
+        // geospasial: cukup perbandingan rentang pada dua kolom angka.
+        // Karena itu SQL mampu melayaninya dan hasilnya setara.
+        if (request.LatMin.HasValue && request.LonMin.HasValue
+            && request.LatMax.HasValue && request.LonMax.HasValue)
+        {
+            var latMin = request.LatMin.Value;
+            var latMax = request.LatMax.Value;
+            var lonMin = request.LonMin.Value;
+            var lonMax = request.LonMax.Value;
+
+            query = query.Where(x =>
+                x.Latitude >= latMin && x.Latitude <= latMax
+                && x.Longitude >= lonMin && x.Longitude <= lonMax);
+        }
+
         // ---- Yang tidak dapat dilayani ----
 
         if (request.Lat.HasValue && request.RadiusKm.HasValue)
@@ -311,6 +328,13 @@ public sealed class SqlSpbuSearchProvider
                 (int)Math.Ceiling(total / (double)request.PageSize),
             TookMs = jam.ElapsedMilliseconds,
             Engine = SearchEngineKind.Sql,
+            Urutan =
+                LabelUrutan.Susun(
+                    SearchEngineKind.Sql,
+                    request.SortBy,
+                    request.IsDescending,
+                    !string.IsNullOrWhiteSpace(request.Search),
+                    request.Lat.HasValue),
             Facets = null,
             Catatan = catatan,
             Kemampuan = new SearchCapabilities
